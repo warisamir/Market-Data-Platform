@@ -50,8 +50,14 @@ public class LinkedEventBus implements EventBus {
     }
 
     private void initializeMetrics() {
-        meterRegistry.gauge("eventbus.queue.size", this.eventQueue::size);
-        meterRegistry.gauge("eventbus.subscribers.total", this::getTotalSubscribers);
+        // Gauge metrics for monitoring
+        io.micrometer.core.instrument.Gauge.builder("eventbus.queue.size", eventQueue::size)
+            .description("Current size of the event queue")
+            .register(meterRegistry);
+
+        io.micrometer.core.instrument.Gauge.builder("eventbus.subscribers.total", this::getTotalSubscribers)
+            .description("Total number of event subscribers")
+            .register(meterRegistry);
     }
 
     @Override

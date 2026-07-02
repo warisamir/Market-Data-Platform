@@ -8,7 +8,6 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.info.BuildProperties;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,18 +20,15 @@ public class HealthController {
     private final BinanceWebSocketClient wsClient;
     private final EventBus eventBus;
     private final MeterRegistry meterRegistry;
-    private final BuildProperties buildProperties;
     private final long startTime = System.currentTimeMillis();
 
     public HealthController(
         BinanceWebSocketClient wsClient,
         EventBus eventBus,
-        MeterRegistry meterRegistry,
-        BuildProperties buildProperties) {
+        MeterRegistry meterRegistry) {
         this.wsClient = wsClient;
         this.eventBus = eventBus;
         this.meterRegistry = meterRegistry;
-        this.buildProperties = buildProperties;
     }
 
     @GetMapping
@@ -72,9 +68,12 @@ public class HealthController {
     }
 
     private long getMessageCount() {
-        Double trades = meterRegistry.find("trades.received").counter().map(c -> c.count()).orElse(0.0);
-        Double tickers = meterRegistry.find("tickers.received").counter().map(c -> c.count()).orElse(0.0);
-        Double updates = meterRegistry.find("orderbook.updates").counter().map(c -> c.count()).orElse(0.0);
+        Double trades = meterRegistry.find("trades.received").counters().stream()
+            .mapToDouble(c -> c.count()).sum();
+        Double tickers = meterRegistry.find("tickers.received").counters().stream()
+            .mapToDouble(c -> c.count()).sum();
+        Double updates = meterRegistry.find("orderbook.updates").counters().stream()
+            .mapToDouble(c -> c.count()).sum();
         return Math.round(trades + tickers + updates);
     }
 }

@@ -4,6 +4,14 @@ spring:
   profiles:
     active: dev
 
+  # Disable auto-configuration for databases
+  data:
+    mongodb:
+      auto-index-creation: false
+    redis:
+      repositories:
+        enabled: false
+
   # WebSocket configuration
   websocket:
     path: /ws
