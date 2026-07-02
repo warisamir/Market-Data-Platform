@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: market-data-platform
+  profiles:
+    active: dev
+
+  # WebSocket configuration
+  websocket:
+    path: /ws
+
+  # Jackson configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: false
+    time-zone: UTC
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  endpoint:
+    health:
+      show-details: always
+
+websocket:
+  url: wss://stream.binance.com:9443/ws
+  connection-timeout-ms: 10000
+  read-timeout-ms: 30000
+  heartbeat-interval-ms: 30000
+  max-reconnect-delay-ms: 60000
+  max-reconnect-attempts: 10
+  enable-checksum: true
+
+logging:
+  level:
+    root: INFO
+    com.market.data: DEBUG
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

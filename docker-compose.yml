@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  # Market Data Platform Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: market-data-platform
+    ports:
+      - "8080:8080"
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx2g -XX:+UseG1GC"
+      SPRING_PROFILES_ACTIVE: "prod"
+      WEBSOCKET_URL: "wss://stream.binance.com:9443/ws"
+    depends_on:
+      - prometheus
+      - grafana
+    networks:
+      - market-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    volumes:
+      - app-logs:/app/logs
+
+  # Prometheus - Metrics collection
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: market-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - market-network
+    restart: unless-stopped
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: market-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - market-network
+    restart: unless-stopped
+
+  # Kafka - Event streaming (optional, for future use)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: market-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - market-network
+    restart: unless-stopped
+    profiles:
+      - kafka
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: market-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - market-network
+    restart: unless-stopped
+    profiles:
+      - kafka
+
+  # Redis - Caching (optional, for future use)
+  redis:
+    image: redis:7.2-alpine
+    container_name: market-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - market-network
+    restart: unless-stopped
+    profiles:
+      - redis
+
+  # MongoDB - Persistence (optional, for future use)
+  mongodb:
+    image: mongo:7.0
+    container_name: market-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - market-network
+    restart: unless-stopped
+    profiles:
+      - persistence
+
+  # MySQL - Metadata (optional, for future use)
+  mysql:
+    image: mysql:8.0
+    container_name: market-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: market_data
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - market-network
+    restart: unless-stopped
+    profiles:
+      - persistence
+
+volumes:
+  prometheus-data:
+  grafana-storage:
+  redis-data:
+  mongodb-data:
+  mysql-data:
+  app-logs:
+
+networks:
+  market-network:
+    driver: bridge
