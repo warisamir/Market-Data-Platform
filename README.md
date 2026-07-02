@@ -463,10 +463,3 @@ orderbook_updates_total                # Order book updates
 - [Micrometer Metrics](https://micrometer.io/)
 - [Building Microservices by Sam Newman](https://samnewman.io/books/building_microservices/)
 
-## 📝 License
-
-Proprietary - Production-grade system
-
----
-
-**Built with ❤️ for real-time financial data processing**
